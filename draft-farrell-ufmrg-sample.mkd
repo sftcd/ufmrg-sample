@@ -1,0 +1,185 @@
+---
+title: Usable Formal Methods Research Group Sample Problems
+abbrev: UFM Sample
+docname: draft-farrell-ufmrg-sample-00
+category: info
+submissionType: IRTF
+
+ipr: trust200902
+keyword: Internet-Draft
+
+pi: [toc, sortrefs, symrefs]
+
+author:
+ -
+    ins: S. Farrell
+    name: Stephen Farrell
+    org: Trinity College, Dublin
+    country: Ireland
+    email: stephen.farrell@cs.tcd.ie
+
+normative:
+
+informative:
+    ufmrg:
+        title: Usable Formal Methods Research Group
+        target: https://datatracker.ietf.org/rg/ufmrg/about/
+        author:
+            organization: IRTF
+        date: 2023
+    ufmrg-interim:
+        title: May 2023 UFMRG online Interim meeting
+        target: https://datatracker.ietf.org/doc/minutes-interim-2023-ufmrg-01-202305241500/
+        author:
+            organization: IRTF
+        date: 2023
+
+--- abstract
+
+This draft provides reasoning as to why the Usable Formal Methods research
+group might benefit from having an IETF-relevant sample problem and describes
+one such (IMAP search). This is just an initial draft aiming to help move
+discussion forward so may be dropped or replaced by other drafts or the
+research group may prefer some non I-D format, or the research group may decide
+that sample problems aren't sufficiently useful. Early days, basically!  
+
+--- middle
+
+Introduction
+============
+
+The Usable Formal Methods research group {{ufmrg}} has discussed the idea
+that having one or more "sample" problems might be useful for a number of
+reasons:
+
+- to provide a small but realistic IETF-relevant problem with which proponents
+  of particular formal methods can demonstrate their preferred methodologies
+- to produce relatively simple formal methods artefacts that deal with a
+  problem familiar to many IETF participants
+- to allow for comparison between formal methods artefacts so that IETF
+  participants can better understand which mechanisms are best used when
+- to possibly discover something new about the sample problems or about
+  implementations of those
+
+The hope is that this should help both sets of people better understand how
+formal methods may be useful for IETF work.
+
+We posit that the following characteristics will help us identify one or
+more "good" sample problems:
+
+- the problem should be well-understood by many IETF participants and easy
+  to understand for formal methods people seeing the problem description for
+  the first time
+- the problem should be simple, so that the formal methods artefacts produced
+  don't overwhelm IETF participants and to lower the effort required for 
+  formal methods people to demonstrate how their preferred mechanisms work
+  for that problem
+
+We provide an initial description of one such problem in the section 2.
+If additional sample problems are proposed, those could be documented in
+other sections of this draft or in other documents. (To be clear: the 
+author would welcome such text - the more the merrier for now.)
+
+## Success Criteria
+
+If this approach succeeds we would expect:
+
+- to see formal methods proponents publish analyses of the sample problem(s)
+- to see IETF participants use/reference those analyses
+- to eventually see teams of IETF participants (with implementation/deployment
+  experience) work together with proponents of formal method schemes to extend
+  those analyses
+
+If this approach doesn't get traction, we will most likely hear crickets.
+
+## Discussion Venues
+
+The github repo for this draft is at:
+
+    https://github.com/sftcd/ufmrg-sample
+
+PRs, issues etc are welcome. Substantive discussion however should for now at
+least be directed to the UFMRG mailing list: ufmrg@irtf.org 
+
+IMAP Search
+===========
+
+## Background
+
+UFMRG recently {{ufmrg-interim}} discussed the idea of using IMAP search as
+a sample problem. The reasons for considering this include:
+
+- IMAP is familiar to all concerned, and doesn't require specialist 
+  cryptographic understanding
+- IMAP search is widely used, apparently particularly by mobile device mail
+  user agents (MUAs)
+- IMAP search has some complexity, e.g. working for connections from multiple
+  MUAs at  the same time, and with some statefullness
+- a description of IMAP search may be relatively easy to extract from the
+  relevant RFCs (I'm about to find out if that's true:-)
+
+The basic problem here is for an MUA to provide search criteria to a 
+message store (MS) and to be returned information about the set of 
+email messages that match the search criteria. Further IMAP operations
+may be performed on the search results, e.g. to move all matching 
+messages to another folder. A typical mail account will be used by
+multiple MUAs in parallel, so that the same person may be searching,
+moving or deleting from a mobile MUA and a desktop MUA at the same
+time, possibly leading to interesting implementation or protocol
+failure cases.
+
+## Underlying Specifications
+
+IMAP search is primarily defined in {{?RFC9051}}, section 6.4.4 but with some
+additional ABNF definitions defined elsewhere required. We reproduce relevant
+text in the next section. For simplicity, we omit some of the possible
+search criteria in the description below.
+
+The text below is a verbatim copy of the text version of RFC9051, section
+6.4.4.  Future versions of this draft will likely simplify this text, and we'll
+try find a better way to include snippets of RFC text. We've not yet
+included the references from that text. 
+
+For now, the purpose of this text is really to try help figure out what kind of
+sample problem description might be useful, so this is not yet intended to be
+something that could be used to generate a formal analysis of the IMAP search
+command.
+
+## Text from RFC 9051
+
+BEGIN TEXT FROM 9051
+
+~~~~~~~~~~
+{::include 9051-6.4.4.txt}
+~~~~~~~~~~
+
+END TEXT FROM 9051
+
+Acknowledgments
+===============
+
+TBD
+
+Security Considerations
+=======================
+
+The security properties of the sample problem(s) are of course of interest
+but this draft itself will hopefully introduce no new security considerations
+unless we omit something from the description of the sample problem(s) that
+leads to erroneous conclusions about those security properties.
+
+IANA Considerations
+===================
+
+No changes to IANA processes are made by this memo.
+
+--- back
+
+Changes from Earlier Versions
+=============================
+
+RFC editor: please remove this section.
+
+Draft -00:
+
+  * Initial revision

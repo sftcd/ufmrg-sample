@@ -1,0 +1,613 @@
+﻿6.4.4.  SEARCH Command
+
+   Arguments:    OPTIONAL result specifier
+
+                 OPTIONAL [CHARSET] specification
+
+                 searching criteria (one or more)
+
+   Responses:    OPTIONAL untagged response:  ESEARCH
+
+   Result:       OK -  search completed
+                 NO -  search error: can't search that [CHARSET] or
+                    criteria
+                 BAD -  command unknown or arguments invalid
+
+   The SEARCH command searches the mailbox for messages that match the
+   given searching criteria.
+
+   The SEARCH command may contain result options.  Result options
+   control what kind of information is returned about messages matching
+   the search criteria in an untagged ESEARCH response.  If no result
+   option is specified or empty list of options is specified as "()",
+   ALL is assumed (see below).  The order of individual options is
+   arbitrary.  Individual options may contain parameters enclosed in
+   parentheses.  (However, if an option has a mandatory parameter, which
+   can always be represented as a number or a sequence-set, the option
+   parameter does not need the enclosing parentheses.  See "Formal
+   Syntax" (Section 9) for more details.)  If an option has parameters,
+   they consist of atoms and/or strings and/or lists in a specific
+   order.  Any options not defined by extensions that the server
+   supports MUST be rejected with a BAD response.
+
+   Note that IMAP4rev1 used SEARCH responses [RFC3501] instead of
+   ESEARCH responses.  Clients that support only IMAP4rev2 MUST ignore
+   SEARCH responses.
+
+   This document specifies the following result options:
+
+   MIN
+      Return the lowest message number/UID that satisfies the SEARCH
+      criteria.
+
+      If the SEARCH results in no matches, the server MUST NOT include
+      the MIN result option in the ESEARCH response; however, it still
+      MUST send the ESEARCH response.
+
+   MAX
+      Return the highest message number/UID that satisfies the SEARCH
+      criteria.
+
+      If the SEARCH results in no matches, the server MUST NOT include
+      the MAX result option in the ESEARCH response; however, it still
+      MUST send the ESEARCH response.
+
+   ALL
+      Return all message numbers/UIDs that satisfy the SEARCH criteria
+      using the sequence-set syntax.  Note that the client MUST NOT
+      assume that messages/UIDs will be listed in any particular order.
+
+      If the SEARCH results in no matches, the server MUST NOT include
+      the ALL result option in the ESEARCH response; however, it still
+      MUST send the ESEARCH response.
+
+   COUNT
+      Return the number of messages that satisfy the SEARCH criteria.
+      This result option MUST always be included in the ESEARCH
+      response.
+
+   SAVE
+      This option tells the server to remember the result of the SEARCH
+      or UID SEARCH command (as well as any command based on SEARCH,
+      e.g., SORT and THREAD [RFC5256]) and store it in an internal
+      variable that we will reference as the "search result variable".
+      The client can use the "$" marker to reference the content of this
+      internal variable.  The "$" marker can be used instead of message
+      sequence or UID sequence in order to indicate that the server
+      should substitute it with the list of messages from the search
+      result variable.  Thus, the client can use the result of the
+      latest remembered SEARCH command as a parameter to another
+      command.  See Section 6.4.4.1 for details on how the value of the
+      search result variable is determined, how it is affected by other
+      commands executed, and how the SAVE return option interacts with
+      other return options.
+
+      In absence of any other SEARCH result option, the SAVE result
+      option also suppresses any ESEARCH response that would have been
+      otherwise returned by the SEARCH command.
+
+   Note: future extensions to this document can allow servers to return
+   multiple ESEARCH responses for a single extended SEARCH command.
+   However, all options specified above MUST result in a single ESEARCH
+   response if used by themselves or in combination.  This guarantee
+   simplifies processing in IMAP4rev2 clients.  Future SEARCH extensions
+   that relax this restriction will have to describe how results from
+   multiple ESEARCH responses are to be combined.
+
+   Searching criteria consist of one or more search keys.
+
+   When multiple keys are specified, the result is the intersection (AND
+   function) of all the messages that match those keys.  For example,
+   the criteria DELETED FROM "SMITH" SINCE 1-Feb-1994 refers to all
+   deleted messages from Smith with INTERNALDATE greater than February
+   1, 1994.  A search key can also be a parenthesized list of one or
+   more search keys (e.g., for use with the OR and NOT keys).
+
+   Server implementations MAY exclude [MIME-IMB] body parts with
+   terminal content media types other than TEXT and MESSAGE from
+   consideration in SEARCH matching.
+
+   The OPTIONAL [CHARSET] specification consists of the word "CHARSET"
+   followed by the name of a character set from the registry
+   [CHARSET-REG].  It indicates the [CHARSET] of the strings that appear
+   in the search criteria.  [MIME-IMB] content transfer encodings and
+   [MIME-HDRS] strings in [RFC5322]/[MIME-IMB] headers MUST be decoded
+   before comparing text.  Servers MUST support US-ASCII and UTF-8
+   charsets; other CHARSETs MAY be supported.  Clients SHOULD use UTF-8.
+   Note that if CHARSET is not provided, IMAP4rev2 servers MUST assume
+   UTF-8, so selecting CHARSET UTF-8 is redundant.  It is permitted for
+   improved compatibility with existing IMAP4rev1 clients.
+
+   If the server does not support the specified [CHARSET], it MUST
+   return a tagged NO response (not a BAD).  This response SHOULD
+   contain the BADCHARSET response code, which MAY list the CHARSETs
+   supported by the server.
+
+   In all search keys that use strings, and unless otherwise specified,
+   a message matches the key if the string is a substring of the
+   associated text.  The matching SHOULD be case insensitive for
+   characters within the ASCII range.  Consider using [IMAP-I18N] for
+   language-sensitive, case-insensitive searching.  Note that the empty
+   string is a substring; this is useful when performing a HEADER search
+   in order to test for a header field presence in the message.
+
+   The defined search keys are as follows.  Refer to "Formal Syntax"
+   (Section 9) for the precise syntactic definitions of the arguments.
+
+   <sequence set>
+      Messages with message sequence numbers corresponding to the
+      specified message sequence number set.
+
+   ALL
+      All messages in the mailbox; the default initial key for ANDing.
+
+   ANSWERED
+      Messages with the \Answered flag set.
+
+   BCC <string>
+      Messages that contain the specified string in the envelope
+      structure's Blind Carbon Copy (BCC) field.
+
+   BEFORE <date>
+      Messages whose internal date (disregarding time and timezone) is
+      earlier than the specified date.
+
+   BODY <string>
+      Messages that contain the specified string in the body of the
+      message.  Unlike TEXT (see below), this doesn't match any header
+      fields.  Servers are allowed to implement flexible matching for
+      this search key, for example, by matching "swim" to both "swam"
+      and "swum" in English language text or only performing full word
+      matching (where "swim" will not match "swimming").
+
+   CC <string>
+      Messages that contain the specified string in the envelope
+      structure's CC field.
+
+   DELETED
+      Messages with the \Deleted flag set.
+
+   DRAFT
+      Messages with the \Draft flag set.
+
+   FLAGGED
+      Messages with the \Flagged flag set.
+
+   FROM <string>
+      Messages that contain the specified string in the envelope
+      structure's FROM field.
+
+   HEADER <field-name> <string>
+      Messages that have a header field with the specified field-name
+      (as defined in [RFC5322]) and that contain the specified string in
+      the text of the header field (what comes after the colon).  If the
+      string to search is zero-length, this matches all messages that
+      have a header field with the specified field-name regardless of
+      the contents.  Servers should use a substring search for this
+      SEARCH item, as clients can use it for automatic processing not
+      initiated by end users.  For example, this can be used when
+      searching for Message-ID or Content-Type header field values that
+      need to be exact or for searches in header fields that the IMAP
+      server might not know anything about.
+
+   KEYWORD <flag>
+      Messages with the specified keyword flag set.
+
+   LARGER <n>
+      Messages with an RFC822.SIZE larger than the specified number of
+      octets.
+
+   NOT <search-key>
+      Messages that do not match the specified search key.
+
+   ON <date>
+      Messages whose internal date (disregarding time and timezone) is
+      within the specified date.
+
+   OR <search-key1> <search-key2>
+      Messages that match either search key.
+
+   SEEN
+      Messages that have the \Seen flag set.
+
+   SENTBEFORE <date>
+      Messages whose [RFC5322] Date: header field (disregarding time and
+      timezone) is earlier than the specified date.
+
+   SENTON <date>
+      Messages whose [RFC5322] Date: header field (disregarding time and
+      timezone) is within the specified date.
+
+   SENTSINCE <date>
+      Messages whose [RFC5322] Date: header field (disregarding time and
+      timezone) is within or later than the specified date.
+
+   SINCE <date>
+      Messages whose internal date (disregarding time and timezone) is
+      within or later than the specified date.
+
+   SMALLER <n>
+      Messages with an RFC822.SIZE smaller than the specified number of
+      octets.
+
+   SUBJECT <string>
+      Messages that contain the specified string in the envelope
+      structure's SUBJECT field.
+
+   TEXT <string>
+      Messages that contain the specified string in the header
+      (including MIME header fields) or body of the message.  Servers
+      are allowed to implement flexible matching for this search key,
+      for example, matching "swim" to both "swam" and "swum" in English
+      language text or only performing full-word matching (where "swim"
+      will not match "swimming").
+
+   TO <string>
+      Messages that contain the specified string in the envelope
+      structure's TO field.
+
+   UID <sequence set>
+      Messages with unique identifiers corresponding to the specified
+      unique identifier set.  Sequence-set ranges are permitted.
+
+   UNANSWERED
+      Messages that do not have the \Answered flag set.
+
+   UNDELETED
+      Messages that do not have the \Deleted flag set.
+
+   UNDRAFT
+      Messages that do not have the \Draft flag set.
+
+   UNFLAGGED
+      Messages that do not have the \Flagged flag set.
+
+   UNKEYWORD <flag>
+      Messages that do not have the specified keyword flag set.
+
+   UNSEEN
+      Messages that do not have the \Seen flag set.
+
+   Example:
+
+     C: A282 SEARCH RETURN (MIN COUNT) FLAGGED
+         SINCE 1-Feb-1994 NOT FROM "Smith"
+     S: * ESEARCH (TAG "A282") MIN 2 COUNT 3
+     S: A282 OK SEARCH completed
+
+   Example:
+
+     C: A283 SEARCH RETURN () FLAGGED
+         SINCE 1-Feb-1994 NOT FROM "Smith"
+     S: * ESEARCH (TAG "A283") ALL 2,10:11
+     S: A283 OK SEARCH completed
+
+   Example:
+
+     C: A284 SEARCH TEXT "string not in mailbox"
+     S: * ESEARCH (TAG "A284")
+     S: A284 OK SEARCH completed
+     C: A285 SEARCH CHARSET UTF-8 TEXT {12}
+     S: + Ready for literal text
+     C: отпуск
+     S: * ESEARCH (TAG "A285") ALL 43
+     S: A285 OK SEARCH completed
+
+
+   The following example demonstrates finding the first unseen message
+   in the mailbox:
+
+   Example:
+
+     C: A284 SEARCH RETURN (MIN) UNSEEN
+     S: * ESEARCH (TAG "A284") MIN 4
+     S: A284 OK SEARCH completed
+
+   The following example demonstrates that if the ESEARCH UID indicator
+   is present, all data in the ESEARCH response is referring to UIDs;
+   for example, the MIN result specifier will be followed by a UID.
+
+   Example:
+
+     C: A285 UID SEARCH RETURN (MIN MAX) 1:5000
+     S: * ESEARCH (TAG "A285") UID MIN 7 MAX 3800
+     S: A285 OK SEARCH completed
+
+   The following example demonstrates returning the number of deleted
+   messages:
+
+   Example:
+
+     C: A286 SEARCH RETURN (COUNT) DELETED
+     S: * ESEARCH (TAG "A286") COUNT 15
+     S: A286 OK SEARCH completed
+
+6.4.4.1.  SAVE Result Option and SEARCH Result Variable
+
+   Upon successful completion of a SELECT or an EXAMINE command (after
+   the tagged OK response), the current search result variable is reset
+   to the empty sequence.
+
+   A successful SEARCH command with the SAVE result option sets the
+   value of the search result variable to the list of messages found in
+   the SEARCH command.  For example, if no messages were found, the
+   search result variable will contain the empty sequence.
+
+   Any of the following SEARCH commands MUST NOT change the search
+   result variable:
+
+      a SEARCH command that caused the server to return the BAD tagged
+      response,
+
+      a SEARCH command with no SAVE result option that caused the server
+      to return NO tagged response, and
+
+      a successful SEARCH command with no SAVE result option.
+
+   A SEARCH command with the SAVE result option that caused the server
+   to return the NO tagged response sets the value of the search result
+   variable to the empty sequence.
+
+   When a message listed in the search result variable is EXPUNGEd, it
+   is automatically removed from the list.  Implementors are reminded
+   that if the server stores the list as a list of message numbers, it
+   MUST automatically adjust them when notifying the client about
+   expunged messages, as described in Section 7.5.1.
+
+   If the server decides to send a new UIDVALIDITY value while the
+   mailbox is opened, it causes the resetting of the search variable to
+   the empty sequence.
+
+   Note that even if the "$" marker contains the empty sequence of
+   messages, it must be treated by all commands accepting message sets
+   as parameters as a valid, but non-matching, list of messages.  For
+   example, the "FETCH $" command would return a tagged OK response and
+   no FETCH responses.  See also Example 5 in Section 6.4.4.4.
+
+   The SAVE result option doesn't change whether the server would return
+   items corresponding to MIN, MAX, ALL, or COUNT result options.
+
+   When the SAVE result option is combined with the MIN or MAX result
+   option, and both ALL and COUNT result options are absent, the
+   corresponding MIN/MAX is returned (if the search result is not
+   empty), but the "$" marker would contain a single message as returned
+   in the MIN/MAX return item.
+
+   If the SAVE result option is combined with both MIN and MAX result
+   options, and both ALL and COUNT result options are absent, the "$"
+   marker would contain zero messages, one message, or two messages as
+   returned in the MIN/MAX return items.
+
+   If the SAVE result option is combined with the ALL and/or COUNT
+   result option(s), the "$" marker would always contain all messages
+   found by the SEARCH or UID SEARCH command.
+
+   The following table summarizes the additional requirement on ESEARCH
+   server implementations described in this section.
+
+           +==============================+====================+
+           | Combination of Result Option |  "$" Marker Value  |
+           +==============================+====================+
+           |           SAVE MIN           |        MIN         |
+           +------------------------------+--------------------+
+           |           SAVE MAX           |        MAX         |
+           +------------------------------+--------------------+
+           |         SAVE MIN MAX         |     MIN & MAX      |
+           +------------------------------+--------------------+
+           |          SAVE * [m]          | all found messages |
+           +------------------------------+--------------------+
+
+                                  Table 4
+
+   where '*' means "ALL" and/or "COUNT", and '[m]' means optional "MIN"
+   and/or "MAX"
+
+   Implementation note: server implementors should note that "$" can
+   reference IMAP message sequences or UID sequences, depending on the
+   context where it is used.  For example, the "$" marker can be set as
+   a result of a SEARCH (SAVE) command and used as a parameter to a UID
+   FETCH command (which accepts a UID sequence, not a message sequence),
+   or the "$" marker can be set as a result of a UID SEARCH (SAVE)
+   command and used as a parameter to a FETCH command (which accepts a
+   message sequence, not a UID sequence).  Server implementations need
+   to automatically map the "$" marker value to message numbers or UIDs,
+   depending on the context where the "$" marker is used.
+
+6.4.4.2.  Multiple Commands in Progress
+
+   Use of a SEARCH RETURN (SAVE) command followed by a command using the
+   "$" marker creates direct dependency between the two commands.  As
+   directed by Section 5.5, a server MUST execute the two commands in
+   the order they were received.
+
+   A client MAY pipeline a SEARCH RETURN (SAVE) command with one or more
+   commands using the "$" marker, as long as this doesn't create an
+   ambiguity, as described in Section 5.5.  Examples 7-9 in
+   Section 6.4.4.4 explain this in more details.
+
+6.4.4.3.  Refusing to Save Search Results
+
+   In some cases, the server MAY refuse to save a SEARCH (SAVE) result,
+   for example, if an internal limit on the number of saved results is
+   reached.  In this case, the server MUST return a tagged NO response
+   containing the NOTSAVED response code and set the search result
+   variable to the empty sequence, as described in Section 6.4.4.1.
+
+6.4.4.4.  Examples Showing Use of the SAVE Result Option
+
+   Only in this section: explanatory comments in examples that start
+   with // are not part of the protocol.
+
+   1.  The following example demonstrates how the client can use the
+       result of a SEARCH command to FETCH headers of interesting
+       messages:
+
+       Example 1:
+
+        C: A282 SEARCH RETURN (SAVE) FLAGGED SINCE 1-Feb-1994
+            NOT FROM "Smith"
+        S: A282 OK SEARCH completed, result saved
+        C: A283 FETCH $ (UID INTERNALDATE FLAGS BODY.PEEK[HEADER])
+        S: * 2 FETCH (UID 14 ...
+        S: * 84 FETCH (UID 100 ...
+        S: * 882 FETCH (UID 1115 ...
+        S: A283 OK completed
+
+       The client can also pipeline the two commands:
+
+       Example 2:
+
+        C: A282 SEARCH RETURN (SAVE) FLAGGED SINCE 1-Feb-1994
+            NOT FROM "Smith"
+        C: A283 FETCH $ (UID INTERNALDATE FLAGS BODY.PEEK[HEADER])
+        S: A282 OK SEARCH completed
+        S: * 2 FETCH (UID 14 ...
+        S: * 84 FETCH (UID 100 ...
+        S: * 882 FETCH (UID 1115 ...
+        S: A283 OK completed
+
+   2.  The following example demonstrates that the result of one SEARCH
+       command can be used as input to another SEARCH command:
+
+       Example 3:
+
+        C: A300 SEARCH RETURN (SAVE) SINCE 1-Jan-2004
+            NOT FROM "Smith"
+        S: A300 OK SEARCH completed
+        C: A301 UID SEARCH UID $ SMALLER 4096
+        S: * ESEARCH (TAG "A301") UID ALL 17,900,901
+        S: A301 OK completed
+
+       Note that the second command in Example 3 can be replaced with:
+
+        C: A301 UID SEARCH $ SMALLER 4096
+
+       and the result of the command would be the same.
+
+   3.  The following example shows that the "$" marker can be combined
+       with other message numbers using the OR SEARCH criterion.
+
+       Example 4:
+
+        C: P282 SEARCH RETURN (SAVE) SINCE 1-Feb-1994
+            NOT FROM "Smith"
+        S: P282 OK SEARCH completed
+        C: P283 SEARCH CHARSET UTF-8 (OR $ 1,3000:3021) TEXT {8+}
+        C: мать
+        S: * ESEARCH (TAG "P283") ALL 882,1102,3003,3005:3006
+        S: P283 OK completed
+
+   4.  The following example demonstrates that a failed SEARCH sets the
+       search result variable to the empty list.  The server doesn't
+       implement the KOI8-R charset.
+
+       Example 5:
+
+        C: B282 SEARCH RETURN (SAVE) SINCE 1-Feb-1994
+            NOT FROM "Smith"
+        S: B282 OK SEARCH completed
+        C: B283 SEARCH RETURN (SAVE) CHARSET KOI8-R
+            (OR $ 1,3000:3021) TEXT {4}
+        C: XXXX
+        S: B283 NO [BADCHARSET UTF-8] KOI8-R is not supported
+       //After this command, the saved result variable contains
+       //no messages.  A client that wants to reissue the B283
+       //SEARCH command with another CHARSET would have to reissue
+       //the B282 command as well.  One possible workaround for
+       //this is to include the desired CHARSET parameter
+       //in the earliest SEARCH RETURN (SAVE) command in a
+       //sequence of related SEARCH commands, to cause
+       //the earliest SEARCH in the sequence to fail.
+       //A better approach might be to always use CHARSET UTF-8
+       //instead.
+
+       Note: Since this document format is restricted to 7-bit ASCII
+       text, it is not possible to show actual KOI8-R data.  The "XXXX"
+       is a placeholder for what would be 4 octets of 8-bit data in an
+       actual transaction.
+
+   5.  The following example demonstrates that it is not an error to use
+       the "$" marker when it contains no messages.
+
+       Example 6:
+
+        C: E282 SEARCH RETURN (SAVE) SINCE 28-Oct-2006
+            NOT FROM "Eric"
+        C: E283 COPY $ "Other Messages"
+       //The "$" contains no messages
+        S: E282 OK SEARCH completed
+        S: E283 OK COPY completed, nothing copied
+
+       Example 7:
+
+        C: F282 SEARCH RETURN (SAVE) KEYWORD $Junk
+        C: F283 COPY $ "Junk"
+        C: F284 STORE $ +FLAGS.Silent (\Deleted)
+        S: F282 OK SEARCH completed
+        S: F283 OK COPY completed
+        S: F284 OK STORE completed
+
+       Example 8:
+
+        C: G282 SEARCH RETURN (SAVE) KEYWORD $Junk
+        C: G283 SEARCH RETURN (ALL) SINCE 28-Oct-2006
+            FROM "Eric"
+       // The server can execute the two SEARCH commands
+       // in any order, as they don't have any dependency.
+       // For example, it may return:
+        S: * ESEARCH (TAG "G283") ALL 3:15,27,29:103
+        S: G283 OK SEARCH completed
+        S: G282 OK SEARCH completed
+
+       The following example demonstrates that the result of the second
+       SEARCH RETURN (SAVE) always overrides the result of the first.
+
+       Example 9:
+
+        C: H282 SEARCH RETURN (SAVE) KEYWORD $Junk
+        C: H283 SEARCH RETURN (SAVE) SINCE 28-Oct-2006
+            FROM "Eric"
+        S: H282 OK SEARCH completed
+        S: H283 OK SEARCH completed
+       // At this point "$" would contain results of H283
+
+       The following example demonstrates behavioral difference for
+       different combinations of ESEARCH result options.
+
+       Example 10:
+
+        C: C282 SEARCH RETURN (ALL) SINCE 12-Feb-2006
+            NOT FROM "Smith"
+        S: * ESEARCH (TAG "C283") ALL 2,10:15,21
+      //$ value hasn't changed
+        S: C282 OK SEARCH completed
+
+        C: C283 SEARCH RETURN (ALL SAVE) SINCE 12-Feb-2006
+            NOT FROM "Smith"
+        S: * ESEARCH (TAG "C283") ALL 2,10:15,21
+      //$ value is 2,10:15,21
+        S: C283 OK SEARCH completed
+
+        C: C284 SEARCH RETURN (SAVE MIN) SINCE 12-Feb-2006
+            NOT FROM "Smith"
+        S: * ESEARCH (TAG "C284") MIN 2
+      //$ value is 2
+        S: C284 OK SEARCH completed
+
+        C: C285 SEARCH RETURN (MAX SAVE MIN) SINCE
+            12-Feb-2006 NOT FROM "Smith"
+        S: * ESEARCH (TAG "C285") MIN 2 MAX 21
+      //$ value is 2,21
+        S: C285 OK SEARCH completed
+
+        C: C286 SEARCH RETURN (MAX SAVE MIN COUNT)
+            SINCE 12-Feb-2006 NOT FROM "Smith"
+        S: * ESEARCH (TAG "C286") MIN 2 MAX 21 COUNT 8
+      //$ value is 2,10:15,21
+        S: C286 OK SEARCH completed
+
+        C: C286 SEARCH RETURN (ALL SAVE MIN) SINCE
+            12-Feb-2006 NOT FROM "Smith"
+        S: * ESEARCH (TAG "C286") MIN 2 ALL 2,10:15,21
+      //$ value is 2,10:15,21
+        S: C286 OK SEARCH completed
